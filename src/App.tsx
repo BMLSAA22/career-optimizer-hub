@@ -13,6 +13,7 @@ import Register from "./pages/Register";
 import ResumeAnalysis from "./pages/ResumeAnalysis";
 import Templates from "./pages/Templates";
 import Comparison from "./pages/Comparison";
+import HR from "./pages/HR";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/analysis" element={<ResumeAnalysis />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/comparison" element={<Comparison />} />
+              <Route path="/hr" element={<HR />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
