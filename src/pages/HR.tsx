@@ -11,32 +11,17 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Calendar, 
   File, 
   ChartBar, 
-  CheckCircle,
   User
 } from 'lucide-react';
+import SmartSearch from '@/components/hr/SmartSearch';
+import AdvancedScheduler from '@/components/hr/AdvancedScheduler';
+import AutomatedMessaging from '@/components/hr/AutomatedMessaging';
 
 // Mock data for candidates and their resumes
 const mockCandidates = [
@@ -87,90 +72,6 @@ const mockCandidates = [
   },
 ];
 
-interface ScheduleMeetingDialogProps {
-  candidate: typeof mockCandidates[0] | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-const ScheduleMeetingDialog: React.FC<ScheduleMeetingDialogProps> = ({ 
-  candidate, 
-  open, 
-  onOpenChange 
-}) => {
-  const [date, setDate] = useState<string>('');
-  const [time, setTime] = useState<string>('');
-  const [meetingType, setMeetingType] = useState<string>('video');
-
-  if (!candidate) return null;
-
-  const handleScheduleMeeting = () => {
-    // In a real application, this would create a meeting in a calendar system
-    toast.success(`Meeting scheduled with ${candidate.name} on ${date} at ${time}`);
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Schedule Interview</DialogTitle>
-          <DialogDescription>
-            Set up an interview with {candidate.name} for {candidate.position} position.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="date" className="text-right">
-              Date
-            </Label>
-            <Input
-              id="date"
-              type="date"
-              className="col-span-3"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="time" className="text-right">
-              Time
-            </Label>
-            <Input
-              id="time"
-              type="time"
-              className="col-span-3"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="meeting-type" className="text-right">
-              Type
-            </Label>
-            <Select value={meetingType} onValueChange={setMeetingType}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select meeting type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="video">Video Call</SelectItem>
-                <SelectItem value="phone">Phone Call</SelectItem>
-                <SelectItem value="in-person">In-person</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleScheduleMeeting}>Schedule Meeting</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 const HR: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -178,6 +79,7 @@ const HR: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedCandidate, setSelectedCandidate] = useState<typeof mockCandidates[0] | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [scheduledInterviews, setScheduledInterviews] = useState(0);
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
@@ -220,8 +122,24 @@ const HR: React.FC = () => {
         return <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs">Pending</span>;
       case 'Shortlisted':
         return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Shortlisted</span>;
+      case 'New':
+        return <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">New</span>;
       default:
         return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{status}</span>;
+    }
+  };
+  
+  const handleCandidateFound = (newCandidates: any[]) => {
+    setCandidates(prev => [...newCandidates, ...prev]);
+  };
+  
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setSelectedCandidate(null);
+    } else if (open && selectedCandidate) {
+      // Increment scheduled interview count when dialog is closed with success
+      setScheduledInterviews(prev => prev + 1);
     }
   };
 
@@ -268,77 +186,90 @@ const HR: React.FC = () => {
           <CardContent>
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-brand-blue mr-3" />
-              <span className="text-3xl font-bold">0</span>
+              <span className="text-3xl font-bold">{scheduledInterviews}</span>
             </div>
           </CardContent>
         </Card>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Candidate Resumes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Candidate Name</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Resume</TableHead>
-                  <TableHead onClick={sortCandidates} className="cursor-pointer">
-                    ATS Score {sortOrder === 'asc' ? '↑' : '↓'}
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {candidates.map((candidate) => (
-                  <TableRow key={candidate.id}>
-                    <TableCell className="font-medium">{candidate.name}</TableCell>
-                    <TableCell>{candidate.position}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <File className="h-4 w-4 mr-2 text-gray-500" />
-                        <span className="text-sm">{candidate.resumeName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${getScoreColor(candidate.score)}`}>
-                        {candidate.score}%
-                      </span>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(candidate.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewResume(candidate.resumeId)}
-                        >
-                          View
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => handleScheduleMeeting(candidate)}
-                        >
-                          Schedule
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* New Components */}
+      <div className="mb-8">
+        <SmartSearch onCandidateFound={handleCandidateFound} />
+      </div>
       
-      <ScheduleMeetingDialog 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Candidate Resumes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Candidate Name</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Resume</TableHead>
+                      <TableHead onClick={sortCandidates} className="cursor-pointer">
+                        ATS Score {sortOrder === 'asc' ? '↑' : '↓'}
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {candidates.map((candidate) => (
+                      <TableRow key={candidate.id}>
+                        <TableCell className="font-medium">{candidate.name}</TableCell>
+                        <TableCell>{candidate.position}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <File className="h-4 w-4 mr-2 text-gray-500" />
+                            <span className="text-sm">{candidate.resumeName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`font-bold ${getScoreColor(candidate.score)}`}>
+                            {candidate.score}%
+                          </span>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(candidate.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewResume(candidate.resumeId)}
+                            >
+                              View
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleScheduleMeeting(candidate)}
+                            >
+                              Schedule
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div>
+          <AutomatedMessaging candidates={candidates} />
+        </div>
+      </div>
+      
+      <AdvancedScheduler 
         candidate={selectedCandidate} 
         open={dialogOpen} 
-        onOpenChange={setDialogOpen} 
+        onOpenChange={handleDialogOpenChange} 
       />
     </div>
   );
