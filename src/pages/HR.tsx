@@ -1,27 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableHeader, 
-  TableRow, 
-  TableHead, 
-  TableBody, 
-  TableCell 
-} from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Calendar, 
-  File, 
-  ChartBar, 
-  User
-} from 'lucide-react';
+
+// Import refactored components
+import StatsCards from '@/components/hr/StatsCards';
+import CandidateTable from '@/components/hr/CandidateTable';
 import SmartSearch from '@/components/hr/SmartSearch';
 import AdvancedScheduler from '@/components/hr/AdvancedScheduler';
 import AutomatedMessaging from '@/components/hr/AutomatedMessaging';
+import { getScoreColor, getStatusBadge } from '@/components/hr/HRUtils';
 
 // Mock data for candidates and their resumes
 const mockCandidates = [
@@ -82,7 +72,7 @@ const HR: React.FC = () => {
   const [scheduledInterviews, setScheduledInterviews] = useState(0);
 
   // Redirect to login if not authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
@@ -107,27 +97,6 @@ const HR: React.FC = () => {
     
     setCandidates(sortedCandidates);
   };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-amber-600';
-    return 'text-red-600';
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Reviewed':
-        return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Reviewed</span>;
-      case 'Pending':
-        return <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs">Pending</span>;
-      case 'Shortlisted':
-        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Shortlisted</span>;
-      case 'New':
-        return <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">New</span>;
-      default:
-        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{status}</span>;
-    }
-  };
   
   const handleCandidateFound = (newCandidates: any[]) => {
     setCandidates(prev => [...newCandidates, ...prev]);
@@ -143,6 +112,11 @@ const HR: React.FC = () => {
     }
   };
 
+  // Calculate average score for the stats card
+  const calculateAverageScore = () => {
+    return Math.round(candidates.reduce((acc, candidate) => acc + candidate.score, 0) / candidates.length);
+  };
+
   if (!isAuthenticated) {
     return null; // Will redirect via the useEffect
   }
@@ -152,47 +126,14 @@ const HR: React.FC = () => {
       <h1 className="text-3xl font-bold mb-2">HR Dashboard</h1>
       <p className="text-gray-600 mb-8">Manage candidates and their resumes</p>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium text-gray-600">Total Candidates</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <User className="h-8 w-8 text-brand-blue mr-3" />
-              <span className="text-3xl font-bold">{candidates.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium text-gray-600">Average ATS Score</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <ChartBar className="h-8 w-8 text-brand-blue mr-3" />
-              <span className="text-3xl font-bold">
-                {Math.round(candidates.reduce((acc, candidate) => acc + candidate.score, 0) / candidates.length)}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium text-gray-600">Scheduled Interviews</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-brand-blue mr-3" />
-              <span className="text-3xl font-bold">{scheduledInterviews}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Cards */}
+      <StatsCards 
+        candidatesCount={candidates.length}
+        averageScore={calculateAverageScore()}
+        scheduledInterviews={scheduledInterviews}
+      />
       
-      {/* New Components */}
+      {/* Smart Search */}
       <div className="mb-8">
         <SmartSearch onCandidateFound={handleCandidateFound} />
       </div>
@@ -204,59 +145,15 @@ const HR: React.FC = () => {
               <CardTitle>Candidate Resumes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Candidate Name</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Resume</TableHead>
-                      <TableHead onClick={sortCandidates} className="cursor-pointer">
-                        ATS Score {sortOrder === 'asc' ? '↑' : '↓'}
-                      </TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {candidates.map((candidate) => (
-                      <TableRow key={candidate.id}>
-                        <TableCell className="font-medium">{candidate.name}</TableCell>
-                        <TableCell>{candidate.position}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <File className="h-4 w-4 mr-2 text-gray-500" />
-                            <span className="text-sm">{candidate.resumeName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`font-bold ${getScoreColor(candidate.score)}`}>
-                            {candidate.score}%
-                          </span>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(candidate.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewResume(candidate.resumeId)}
-                            >
-                              View
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => handleScheduleMeeting(candidate)}
-                            >
-                              Schedule
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <CandidateTable
+                candidates={candidates}
+                sortOrder={sortOrder}
+                onSort={sortCandidates}
+                onViewResume={handleViewResume}
+                onScheduleMeeting={handleScheduleMeeting}
+                getScoreColor={getScoreColor}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </div>
